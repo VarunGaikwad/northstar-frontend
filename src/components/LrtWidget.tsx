@@ -3,7 +3,6 @@ import { generateDummyTimetable, STATIONS } from "../data/lrtData";
 import { useLocalStorage } from "../hooks/useLocalStorage";
 
 const MAX_UPCOMING = 6;
-// Roughly 2.4 min of travel between adjacent stations (dummy heuristic)
 const MIN_PER_STOP = 2.4;
 
 function nowMinutes(): number {
@@ -22,16 +21,10 @@ interface PlannedTrain {
 }
 
 export function LrtWidget() {
-  const [fromCode, setFromCode] = useLocalStorage<number>(
-    "dashboard.lrtFrom",
-    STATIONS[0].code
-  );
-  const [toCode, setToCode] = useLocalStorage<number>(
-    "dashboard.lrtTo",
-    STATIONS[STATIONS.length - 1].code
-  );
-
+  const [fromCode, setFromCode] = useLocalStorage<number>("dashboard.lrtFrom", STATIONS[0].code);
+  const [toCode, setToCode] = useLocalStorage<number>("dashboard.lrtTo", STATIONS[STATIONS.length - 1].code);
   const [now, setNow] = useState(nowMinutes);
+
   useEffect(() => {
     const id = setInterval(() => setNow(nowMinutes()), 30_000);
     return () => clearInterval(id);
@@ -45,8 +38,6 @@ export function LrtWidget() {
   const plans: PlannedTrain[] = useMemo(() => {
     if (sameStation) return [];
     const travelMins = Math.round(Math.abs(to.code - from.code) * MIN_PER_STOP);
-
-    // Dummy departures at the origin station — later replaced by /api/lrt/search
     return generateDummyTimetable(from.code)
       .filter((t) => t.direction === direction)
       .map<PlannedTrain>((t) => {
@@ -74,18 +65,8 @@ export function LrtWidget() {
     "flex-1 min-w-0 rounded-xl bg-white/10 border border-white/10 px-3 py-2 text-[13px] font-semibold text-white outline-none cursor-pointer hover:bg-white/15 transition-colors [&>option]:bg-slate-900";
 
   return (
-    <aside className="h-full min-h-0 flex flex-col rounded-3xl bg-gradient-to-b from-white/[0.08] to-white/[0.03] border border-white/15 backdrop-blur-xl p-6 shadow-[0_12px_32px_rgba(0,0,0,0.35),inset_0_1px_0_rgba(255,255,255,0.1)]">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-bold flex items-center gap-2">
-          <span className="text-emerald-300">🚊</span> LRT
-        </h2>
-        <span className="text-[11px] font-semibold px-2.5 py-1 rounded-full bg-white/10 border border-white/10 text-slate-400">
-          Dummy Data
-        </span>
-      </div>
-
-      {/* From / To selectors */}
-      <div className="flex items-center gap-2 mb-4 shrink-0">
+    <div>
+      <div className="flex items-center gap-2 mb-4">
         <div className="flex-1 min-w-0 flex flex-col gap-1">
           <label className="text-[11px] text-slate-400 font-medium pl-1">From</label>
           <select
@@ -95,9 +76,7 @@ export function LrtWidget() {
             className={selectCls}
           >
             {STATIONS.map((s) => (
-              <option key={s.code} value={s.code}>
-                {s.nameEn}
-              </option>
+              <option key={s.code} value={s.code}>{s.name}</option>
             ))}
           </select>
         </div>
@@ -121,18 +100,15 @@ export function LrtWidget() {
             className={selectCls}
           >
             {STATIONS.map((s) => (
-              <option key={s.code} value={s.code}>
-                {s.nameEn}
-              </option>
+              <option key={s.code} value={s.code}>{s.name}</option>
             ))}
           </select>
         </div>
       </div>
 
-      {/* Direction banner */}
       {!sameStation && (
-        <div className="flex items-center justify-center gap-2 mb-3 shrink-0">
-          <span className="text-[12px] text-slate-400">{from.nameEn}</span>
+        <div className="flex items-center justify-center gap-2 mb-3">
+          <span className="text-[12px] text-slate-400">{from.name}</span>
           <span
             className={
               "text-[11px] font-bold px-2 py-0.5 rounded-md " +
@@ -143,19 +119,16 @@ export function LrtWidget() {
           >
             {direction === "INBOUND" ? "上り →" : "← 下り"}
           </span>
-          <span className="text-[12px] text-slate-400">{to.nameEn}</span>
+          <span className="text-[12px] text-slate-400">{to.name}</span>
         </div>
       )}
 
-      {/* Train list */}
       {sameStation ? (
-        <p className="text-sm text-slate-400">
-          Pick two different stations to see trains.
-        </p>
+        <p className="text-sm text-slate-400">Pick two different stations to see trains.</p>
       ) : upcoming.length === 0 ? (
         <p className="text-sm text-slate-400">No more trains today.</p>
       ) : (
-        <ul className="flex-1 min-h-0 overflow-y-auto flex flex-col gap-2 pr-1">
+        <ul className="flex flex-col gap-2 pr-1 max-h-[35vh] overflow-y-auto">
           {upcoming.map((p, i) => (
             <li
               key={`${p.depart}-${p.direction}-${i}`}
@@ -166,33 +139,18 @@ export function LrtWidget() {
                   : "bg-white/[0.06] border-white/10 hover:bg-white/15")
               }
             >
-              {/* Depart → Arrive */}
               <div className="flex flex-col items-center gap-0.5 shrink-0 w-16">
-                <span className="text-base font-bold tabular-nums leading-none">
-                  {p.depart}
-                </span>
+                <span className="text-base font-bold tabular-nums leading-none">{p.depart}</span>
                 <span className="text-slate-500 leading-none">↓</span>
                 <span className="text-sm font-semibold tabular-nums leading-none text-indigo-200">
                   {p.arrive}
-                  {p.arriveNextDay && (
-                    <span className="ml-1 text-[9px] text-amber-300/80">+1</span>
-                  )}
+                  {p.arriveNextDay && <span className="ml-1 text-[9px] text-amber-300/80">+1</span>}
                 </span>
               </div>
-
-              {/* Duration + direction */}
               <div className="flex-1 min-w-0">
-                <div className="text-[13px] font-semibold">
-                  {p.durationMins} min
-                </div>
-                {i === 0 && (
-                  <div className="text-[11px] text-indigo-300 font-medium">
-                    Next train
-                  </div>
-                )}
+                <div className="text-[13px] font-semibold">{p.durationMins} min</div>
+                {i === 0 && <div className="text-[11px] text-indigo-300 font-medium">Next train</div>}
               </div>
-
-              {/* Train type badge */}
               <span
                 className={
                   "shrink-0 text-[10px] font-bold px-2 py-1 rounded-md " +
@@ -208,14 +166,13 @@ export function LrtWidget() {
         </ul>
       )}
 
-      <p className="mt-3 shrink-0 text-[11px] text-slate-500">
+      <p className="mt-3 text-[11px] text-slate-500">
         {plans.length} trips today · updates every 30s
       </p>
-    </aside>
+    </div>
   );
 }
 
-/** Format a minute-of-day (may overflow past 1440 → next day) as "H:MM" 24h */
 function formatArrive(minuteOfDay: number): string {
   const m = minuteOfDay % 1440;
   return `${Math.floor(m / 60)}:${String(m % 60).padStart(2, "0")}`;

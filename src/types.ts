@@ -33,4 +33,6 @@ export interface DashboardState {
   activeFolderId: string | null;
   weather: Weather;
   folders: Folder[];
+  focus?: string;
+  focusDate?: string;
 }
