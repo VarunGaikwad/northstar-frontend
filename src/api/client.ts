@@ -2,7 +2,9 @@ import type { ApiError, ApiMessage, ApiSuccess } from "./types";
 
 const TOKEN_KEY = "auth.token";
 const USER_KEY = "auth.user";
-const API_BASE = (import.meta.env.VITE_API_BASE as string | undefined) ?? "/api";
+const API_BASE =
+  (import.meta.env.VITE_API_BASE as string | undefined) ??
+  "https://northstar-backend-five.vercel.app/api";
 
 class HttpError extends Error {
   status: number;
@@ -22,7 +24,7 @@ async function request<T>(
   body?: unknown
 ): Promise<T> {
   const headers: Record<string, string> = {
-    "Content-Type": "application/json",
+    "Content-Type": "application/json"
   };
   const token = getToken();
   if (token) headers["Authorization"] = `Bearer ${token}`;
@@ -30,7 +32,7 @@ async function request<T>(
   const res = await fetch(`${API_BASE}${path}`, {
     method,
     headers,
-    body: body !== undefined ? JSON.stringify(body) : undefined,
+    body: body !== undefined ? JSON.stringify(body) : undefined
   });
 
   const data = (await res.json().catch(() => null)) as
@@ -65,7 +67,10 @@ export function apiPatch<T>(path: string, body: unknown): Promise<T> {
   return request<T>("PATCH", path, body);
 }
 
-export function apiMessage(path: string, method: "DELETE" | "POST" = "DELETE"): Promise<ApiMessage> {
+export function apiMessage(
+  path: string,
+  method: "DELETE" | "POST" = "DELETE"
+): Promise<ApiMessage> {
   return request<ApiMessage>(method, path);
 }
 
