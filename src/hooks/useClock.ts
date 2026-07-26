@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 
 export interface ClockInfo {
   time: string; // HH:MM:SS
+  timeShort: string; // HH:MM
   date: string; // "Monday, January 1"
   greeting: string; // Good Morning / Afternoon / Evening
 }
@@ -14,10 +15,11 @@ function greetingFor(hour: number): string {
 
 function buildClockInfo(now: Date): ClockInfo {
   const pad = (n: number) => String(n).padStart(2, "0");
+  const hours = pad(now.getHours());
+  const minutes = pad(now.getMinutes());
   return {
-    time: `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(
-      now.getSeconds()
-    )}`,
+    time: `${hours}:${minutes}:${pad(now.getSeconds())}`,
+    timeShort: `${hours}:${minutes}`,
     date: now.toLocaleDateString(undefined, {
       weekday: "long",
       month: "long",

@@ -13,6 +13,12 @@ The React Compiler is enabled on this template. See [this documentation](https:/
 
 Note: This will impact Vite dev & build performances.
 
+## Authentication & API
+
+- Copy `.env.example` to `.env` and set `VITE_API_BASE` and `VITE_DEFAULT_TZ`.
+- The dev server proxies `/api` to `http://localhost:3000` (see `vite.config.ts`).
+- The JWT access token is stored in `localStorage` under `auth.token` and the user profile under `auth.user`. Both are cleared on logout and when the API returns a `401`.
+
 ## Expanding the ESLint configuration
 
 If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:

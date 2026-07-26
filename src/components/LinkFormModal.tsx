@@ -1,83 +1,60 @@
 import { useState } from "react";
-import type { Link } from "../types";
+import type { FavLink } from "../types";
 import { Modal } from "./Modal";
+import { Button, Input } from "./ui";
+import { Globe, Tag } from "lucide-react";
 
 interface LinkFormModalProps {
   open: boolean;
-  /** null = adding a new link, otherwise editing this link */
-  link: Link | null;
+  link: FavLink | null;
   onClose: () => void;
-  onSave: (name: string, url: string) => void;
+  onSave: (title: string, url: string) => void;
 }
 
-const inputCls =
-  "w-full bg-black/25 border border-white/10 rounded-lg px-3.5 py-2.5 text-sm text-white outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-400/20";
-
-const btnPrimary =
-  "px-4 py-2.5 rounded-lg text-sm font-semibold text-white bg-gradient-to-br from-indigo-400 to-violet-500 shadow-[0_6px_18px_rgba(108,140,255,0.35)] hover:-translate-y-px transition cursor-pointer";
-const btnGhost =
-  "px-4 py-2.5 rounded-lg text-sm font-semibold text-slate-300 border border-white/10 hover:bg-white/10 hover:text-white transition cursor-pointer";
-
 export function LinkFormModal(props: LinkFormModalProps) {
-  // Key forces remount when the modal opens for a different link,
-  // so form state initializes from props without an effect.
   return <LinkFormInner key={`${props.open}-${props.link?.id ?? "new"}`} {...props} />;
 }
 
-function LinkFormInner({
-  open,
-  link,
-  onClose,
-  onSave,
-}: LinkFormModalProps) {
-  const [name, setName] = useState(link?.name ?? "");
+function LinkFormInner({ open, link, onClose, onSave }: LinkFormModalProps) {
+  const [title, setTitle] = useState(link?.title ?? "");
   const [url, setUrl] = useState(link?.url ?? "");
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     let cleanUrl = url.trim();
-    const cleanName = name.trim();
-    if (!cleanName || !cleanUrl) return;
-    // Normalize bare domains so anchor href works
+    const cleanTitle = title.trim();
+    if (!cleanTitle || !cleanUrl) return;
     if (!/^https?:\/\//i.test(cleanUrl)) cleanUrl = "https://" + cleanUrl;
-    onSave(cleanName, cleanUrl);
+    onSave(cleanTitle, cleanUrl);
   };
 
   return (
-    <Modal
-      open={open}
-      title={link ? "Edit Link" : "Add Link"}
-      onClose={onClose}
-    >
-      <form onSubmit={handleSubmit} className="flex flex-col gap-3.5">
-        <label className="flex flex-col gap-1.5">
-          <span className="text-[13px] font-medium text-slate-300">Name</span>
-          <input
-            className={inputCls}
-            placeholder="Google"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            required
-            autoFocus
-          />
-        </label>
-        <label className="flex flex-col gap-1.5">
-          <span className="text-[13px] font-medium text-slate-300">URL</span>
-          <input
-            className={inputCls}
-            placeholder="https://google.com"
-            value={url}
-            onChange={(e) => setUrl(e.target.value)}
-            required
-          />
-        </label>
-        <div className="flex justify-end gap-2.5 mt-1">
-          <button type="button" className={btnGhost} onClick={onClose}>
+    <Modal open={open} title={link ? "Edit Bookmark" : "Add Bookmark"} onClose={onClose}>
+      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+        <Input
+          label="Name"
+          placeholder="e.g. GitHub"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          leftIcon={<Tag className="w-4 h-4" />}
+          required
+          autoFocus
+        />
+        <Input
+          label="URL"
+          placeholder="https://github.com"
+          value={url}
+          onChange={(e) => setUrl(e.target.value)}
+          leftIcon={<Globe className="w-4 h-4" />}
+          required
+        />
+        <div className="flex justify-end gap-3 mt-2">
+          <Button type="button" variant="ghost" size="md" onClick={onClose}>
             Cancel
-          </button>
-          <button type="submit" className={btnPrimary}>
+          </Button>
+          <Button type="submit" variant="primary" size="md">
             Save
-          </button>
+          </Button>
         </div>
       </form>
     </Modal>

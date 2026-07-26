@@ -1,10 +1,11 @@
+import { ArrowDown, ArrowRightLeft, TrainFront, Clock } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { generateDummyTimetable, STATIONS } from "../data/lrtData";
+import { useLrtSearch, useLrtStations } from "../api/endpoints/lrt";
+import { parseHMM } from "../api/timeFormat";
 import { useLocalStorage } from "../hooks/useLocalStorage";
+import { Badge, Skeleton } from "./ui";
 
 const MAX_UPCOMING = 6;
-// Roughly 2.4 min of travel between adjacent stations (dummy heuristic)
-const MIN_PER_STOP = 2.4;
 
 function nowMinutes(): number {
   const d = new Date();
@@ -22,14 +23,28 @@ interface PlannedTrain {
 }
 
 export function LrtWidget() {
+  const { data: stationsData, isLoading: stationsLoading } = useLrtStations();
+  const stations = useMemo(() => stationsData?.stations ?? [], [stationsData]);
+  const first = stations[0]?.code ?? 0;
+  const last = stations[stations.length - 1]?.code ?? 0;
+
   const [fromCode, setFromCode] = useLocalStorage<number>(
     "dashboard.lrtFrom",
-    STATIONS[0].code
+    first
   );
   const [toCode, setToCode] = useLocalStorage<number>(
     "dashboard.lrtTo",
-    STATIONS[STATIONS.length - 1].code
+    last
   );
+
+  useEffect(() => {
+    if (stations.length && !stations.find((s) => s.code === fromCode)) {
+      setFromCode(first);
+    }
+    if (stations.length && !stations.find((s) => s.code === toCode)) {
+      setToCode(last);
+    }
+  }, [stations, fromCode, toCode, first, last, setFromCode, setToCode]);
 
   const [now, setNow] = useState(nowMinutes);
   useEffect(() => {
@@ -37,66 +52,68 @@ export function LrtWidget() {
     return () => clearInterval(id);
   }, []);
 
-  const from = STATIONS.find((s) => s.code === fromCode) ?? STATIONS[0];
-  const to = STATIONS.find((s) => s.code === toCode) ?? STATIONS[STATIONS.length - 1];
-  const sameStation = from.code === to.code;
-  const direction = from.code < to.code ? "INBOUND" : "OUTBOUND";
+  const from = stations.find((s) => s.code === fromCode) ?? stations[0];
+  const to = stations.find((s) => s.code === toCode) ?? stations[stations.length - 1];
+  const sameStation = from?.code === to?.code;
+  const direction =
+    from && to ? (from.code < to.code ? "INBOUND" : "OUTBOUND") : "INBOUND";
+
+  const { data: searchData, isLoading: searchLoading, error } = useLrtSearch({
+    from: fromCode,
+    to: toCode,
+    enabled: !sameStation && stations.length > 0,
+  });
 
   const plans: PlannedTrain[] = useMemo(() => {
-    if (sameStation) return [];
-    const travelMins = Math.round(Math.abs(to.code - from.code) * MIN_PER_STOP);
-
-    // Dummy departures at the origin station — later replaced by /api/lrt/search
-    return generateDummyTimetable(from.code)
-      .filter((t) => t.direction === direction)
-      .map<PlannedTrain>((t) => {
-        const arriveMin = t.minuteOfDay + travelMins;
-        return {
-          depart: t.time,
-          arrive: formatArrive(arriveMin),
-          departMin: t.minuteOfDay,
-          arriveNextDay: arriveMin >= 24 * 60,
-          durationMins: travelMins,
-          direction: t.direction,
-          trainType: t.trainType,
-        };
-      });
-  }, [from.code, to.code, direction, sameStation]);
+    if (sameStation || !searchData) return [];
+    return searchData.trips.map((t) => ({
+      depart: t.from.time ?? "",
+      arrive: t.to.time ?? "",
+      departMin:
+        parseHMM(t.from.time ?? "") + (t.from.isNextDay ? 24 * 60 : 0),
+      arriveNextDay: t.to.isNextDay,
+      durationMins: t.durationMins,
+      direction: t.direction,
+      trainType: t.trainType,
+    }));
+  }, [searchData, sameStation]);
 
   const upcoming = plans.filter((p) => p.departMin >= now).slice(0, MAX_UPCOMING);
 
   const swap = () => {
+    if (!from || !to) return;
     setFromCode(to.code);
     setToCode(from.code);
   };
 
   const selectCls =
-    "flex-1 min-w-0 rounded-xl bg-white/10 border border-white/10 px-3 py-2 text-[13px] font-semibold text-white outline-none cursor-pointer hover:bg-white/15 transition-colors [&>option]:bg-slate-900";
+    "w-full rounded-xl bg-white/[0.08] border border-white/15 px-3 py-2 text-xs font-semibold text-white outline-none cursor-pointer hover:bg-white/[0.12] focus:border-indigo-400 transition-colors [&>option]:bg-slate-900";
 
   return (
-    <aside className="h-full min-h-0 flex flex-col rounded-3xl bg-gradient-to-b from-white/[0.08] to-white/[0.03] border border-white/15 backdrop-blur-xl p-6 shadow-[0_12px_32px_rgba(0,0,0,0.35),inset_0_1px_0_rgba(255,255,255,0.1)]">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-bold flex items-center gap-2">
-          <span className="text-emerald-300">🚊</span> LRT
+    <aside className="h-full min-h-0 flex flex-col rounded-3xl bg-gradient-to-b from-white/[0.08] to-white/[0.03] border border-white/15 backdrop-blur-xl p-6 shadow-[0_12px_32px_rgba(0,0,0,0.35),inset_0_1px_0_rgba(255,255,255,0.08)]">
+      <div className="flex items-center justify-between mb-5">
+        <h2 className="text-lg font-bold flex items-center gap-2 text-white">
+          <TrainFront className="w-5 h-5 text-purple-400" />
+          <span>Light Rail Transit</span>
         </h2>
-        <span className="text-[11px] font-semibold px-2.5 py-1 rounded-full bg-white/10 border border-white/10 text-slate-400">
-          Dummy Data
-        </span>
+        <Badge variant="success" dot size="sm">
+          Live Timetable
+        </Badge>
       </div>
 
-      {/* From / To selectors */}
-      <div className="flex items-center gap-2 mb-4 shrink-0">
+      {/* Station Selector Bar */}
+      <div className="flex items-center gap-2 mb-5 shrink-0 bg-white/[0.04] p-3 rounded-2xl border border-white/10">
         <div className="flex-1 min-w-0 flex flex-col gap-1">
-          <label className="text-[11px] text-slate-400 font-medium pl-1">From</label>
+          <span className="text-[10px] text-white/50 font-bold uppercase tracking-wider">From</span>
           <select
-            value={from.code}
+            value={fromCode}
             onChange={(e) => setFromCode(Number(e.target.value))}
             aria-label="From station"
             className={selectCls}
           >
-            {STATIONS.map((s) => (
+            {stations.map((s) => (
               <option key={s.code} value={s.code}>
-                {s.nameEn}
+                {s.nameEn ?? s.name}
               </option>
             ))}
           </select>
@@ -105,118 +122,113 @@ export function LrtWidget() {
         <button
           type="button"
           onClick={swap}
-          aria-label="Swap from and to"
-          title="Swap"
-          className="shrink-0 mt-5 w-9 h-9 rounded-xl bg-white/10 border border-white/15 text-slate-300 hover:text-white hover:bg-white/20 hover:rotate-180 transition-all duration-300 cursor-pointer"
+          aria-label="Swap stations"
+          title="Swap stations"
+          className="shrink-0 mt-4 w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 border border-white/15 text-white/80 hover:text-white flex items-center justify-center transition-all duration-300 active:scale-95 cursor-pointer"
         >
-          ⇄
+          <ArrowRightLeft className="w-3.5 h-3.5" />
         </button>
 
         <div className="flex-1 min-w-0 flex flex-col gap-1">
-          <label className="text-[11px] text-slate-400 font-medium pl-1">To</label>
+          <span className="text-[10px] text-white/50 font-bold uppercase tracking-wider">To</span>
           <select
-            value={to.code}
+            value={toCode}
             onChange={(e) => setToCode(Number(e.target.value))}
             aria-label="To station"
             className={selectCls}
           >
-            {STATIONS.map((s) => (
+            {stations.map((s) => (
               <option key={s.code} value={s.code}>
-                {s.nameEn}
+                {s.nameEn ?? s.name}
               </option>
             ))}
           </select>
         </div>
       </div>
 
-      {/* Direction banner */}
-      {!sameStation && (
-        <div className="flex items-center justify-center gap-2 mb-3 shrink-0">
-          <span className="text-[12px] text-slate-400">{from.nameEn}</span>
-          <span
-            className={
-              "text-[11px] font-bold px-2 py-0.5 rounded-md " +
-              (direction === "INBOUND"
-                ? "bg-indigo-400/20 text-indigo-300"
-                : "bg-emerald-400/20 text-emerald-300")
-            }
-          >
-            {direction === "INBOUND" ? "上り →" : "← 下り"}
-          </span>
-          <span className="text-[12px] text-slate-400">{to.nameEn}</span>
+      {(stationsLoading || searchLoading) && (
+        <div className="space-y-3 mb-4">
+          <Skeleton variant="rectangular" className="h-16 rounded-2xl" />
+          <Skeleton variant="rectangular" className="h-16 rounded-2xl" />
+          <Skeleton variant="rectangular" className="h-16 rounded-2xl" />
         </div>
       )}
 
-      {/* Train list */}
+      {error && (
+        <div className="mb-4 rounded-2xl bg-red-500/15 border border-red-400/30 p-3.5 text-xs text-red-200">
+          {error.message}
+        </div>
+      )}
+
+      {!sameStation && !stationsLoading && !searchLoading && !error && from && to && (
+        <div className="flex items-center justify-between mb-3 px-1 shrink-0">
+          <span className="text-xs font-semibold text-white/70">{from.nameEn}</span>
+          <Badge variant={direction === "INBOUND" ? "primary" : "success"} size="sm">
+            {direction === "INBOUND" ? "Inbound →" : "← Outbound"}
+          </Badge>
+          <span className="text-xs font-semibold text-white/70">{to.nameEn}</span>
+        </div>
+      )}
+
       {sameStation ? (
-        <p className="text-sm text-slate-400">
-          Pick two different stations to see trains.
-        </p>
+        <div className="flex-1 flex flex-col items-center justify-center text-center text-white/50 p-6 space-y-2">
+          <TrainFront className="w-8 h-8 text-white/30 stroke-1" />
+          <p className="text-xs">Select two different stations to view train schedule.</p>
+        </div>
       ) : upcoming.length === 0 ? (
-        <p className="text-sm text-slate-400">No more trains today.</p>
+        <div className="flex-1 flex flex-col items-center justify-center text-center text-white/50 p-6 space-y-2">
+          <Clock className="w-8 h-8 text-white/30 stroke-1" />
+          <p className="text-xs">No upcoming departures scheduled for today.</p>
+        </div>
       ) : (
-        <ul className="flex-1 min-h-0 overflow-y-auto flex flex-col gap-2 pr-1">
-          {upcoming.map((p, i) => (
-            <li
-              key={`${p.depart}-${p.direction}-${i}`}
-              className={
-                "flex items-center gap-3 rounded-xl px-3.5 py-2.5 border transition-colors " +
-                (i === 0
-                  ? "bg-gradient-to-br from-indigo-400/25 to-violet-500/25 border-indigo-400/40"
-                  : "bg-white/[0.06] border-white/10 hover:bg-white/15")
-              }
-            >
-              {/* Depart → Arrive */}
-              <div className="flex flex-col items-center gap-0.5 shrink-0 w-16">
-                <span className="text-base font-bold tabular-nums leading-none">
-                  {p.depart}
-                </span>
-                <span className="text-slate-500 leading-none">↓</span>
-                <span className="text-sm font-semibold tabular-nums leading-none text-indigo-200">
-                  {p.arrive}
-                  {p.arriveNextDay && (
-                    <span className="ml-1 text-[9px] text-amber-300/80">+1</span>
-                  )}
-                </span>
-              </div>
-
-              {/* Duration + direction */}
-              <div className="flex-1 min-w-0">
-                <div className="text-[13px] font-semibold">
-                  {p.durationMins} min
-                </div>
-                {i === 0 && (
-                  <div className="text-[11px] text-indigo-300 font-medium">
-                    Next train
-                  </div>
-                )}
-              </div>
-
-              {/* Train type badge */}
-              <span
-                className={
-                  "shrink-0 text-[10px] font-bold px-2 py-1 rounded-md " +
-                  (p.trainType === "RAPID"
-                    ? "bg-red-400/20 text-red-300"
-                    : "bg-emerald-400/15 text-emerald-300")
-                }
+        <ul className="flex-1 min-h-0 overflow-y-auto space-y-2.5 pr-1">
+          {upcoming.map((p, i) => {
+            const minutesUntil = p.departMin - now;
+            return (
+              <li
+                key={`${p.depart}-${p.direction}-${i}`}
+                className={`flex items-center gap-3 rounded-2xl p-3.5 border transition-all duration-200 ${
+                  i === 0
+                    ? "bg-gradient-to-r from-indigo-500/25 via-violet-500/15 to-transparent border-indigo-400/40 shadow-lg shadow-indigo-500/10"
+                    : "bg-white/[0.05] border-white/10 hover:bg-white/[0.1]"
+                }`}
               >
-                {p.trainType === "RAPID" ? "快速" : "各停"}
-              </span>
-            </li>
-          ))}
+                <div className="flex flex-col items-center shrink-0 w-14">
+                  <span className="text-base font-bold text-white tabular-nums leading-none">
+                    {p.depart}
+                  </span>
+                  <ArrowDown className="w-3 h-3 text-white/40 my-1" />
+                  <span className="text-xs font-medium text-white/70 tabular-nums leading-none">
+                    {p.arrive}
+                    {p.arriveNextDay && <span className="ml-0.5 text-[9px] text-amber-300">+1</span>}
+                  </span>
+                </div>
+
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-semibold text-white">
+                      {p.durationMins} mins
+                    </span>
+                    {i === 0 && (
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-300 bg-indigo-400/20 px-2 py-0.5 rounded-full">
+                        In {minutesUntil <= 0 ? "Now" : `${minutesUntil}m`}
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                <Badge variant={p.trainType === "RAPID" ? "danger" : "success"} size="sm">
+                  {p.trainType === "RAPID" ? "Rapid" : "Local"}
+                </Badge>
+              </li>
+            );
+          })}
         </ul>
       )}
 
-      <p className="mt-3 shrink-0 text-[11px] text-slate-500">
-        {plans.length} trips today · updates every 30s
-      </p>
+      <div className="mt-4 pt-3 border-t border-white/10 shrink-0 text-[11px] text-white/40 text-center font-mono">
+        {plans.length} scheduled trips today · Auto-updates every 30s
+      </div>
     </aside>
   );
-}
-
-/** Format a minute-of-day (may overflow past 1440 → next day) as "H:MM" 24h */
-function formatArrive(minuteOfDay: number): string {
-  const m = minuteOfDay % 1440;
-  return `${Math.floor(m / 60)}:${String(m % 60).padStart(2, "0")}`;
 }

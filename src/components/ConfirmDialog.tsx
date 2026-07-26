@@ -1,4 +1,5 @@
 import { Modal } from "./Modal";
+import { Button } from "./ui";
 
 interface ConfirmDialogProps {
   open: boolean;
@@ -6,11 +7,6 @@ interface ConfirmDialogProps {
   onCancel: () => void;
   onConfirm: () => void;
 }
-
-const btnDanger =
-  "px-4 py-2.5 rounded-lg text-sm font-semibold text-white bg-gradient-to-br from-red-400 to-pink-500 shadow-[0_6px_18px_rgba(255,107,107,0.35)] hover:-translate-y-px transition cursor-pointer";
-const btnGhost =
-  "px-4 py-2.5 rounded-lg text-sm font-semibold text-slate-300 border border-white/10 hover:bg-white/10 hover:text-white transition cursor-pointer";
 
 export function ConfirmDialog({
   open,
@@ -20,14 +16,14 @@ export function ConfirmDialog({
 }: ConfirmDialogProps) {
   return (
     <Modal open={open} title="Are you sure?" onClose={onCancel}>
-      <p className="text-sm text-slate-300 mb-4">{message}</p>
-      <div className="flex justify-end gap-2.5">
-        <button type="button" className={btnGhost} onClick={onCancel}>
+      <p className="text-sm text-white/80 mb-6 leading-relaxed">{message}</p>
+      <div className="flex justify-end gap-3">
+        <Button variant="ghost" size="md" onClick={onCancel}>
           Cancel
-        </button>
-        <button type="button" className={btnDanger} onClick={onConfirm}>
+        </Button>
+        <Button variant="danger" size="md" onClick={onConfirm}>
           Delete
-        </button>
+        </Button>
       </div>
     </Modal>
   );

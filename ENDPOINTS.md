@@ -16,6 +16,7 @@ Base URL: `http://localhost:<PORT>` (default `3000`, configured in `.env`)
 - [FavLinks](#favlinks)
 - [Weather](#weather)
 - [LRT Timetable](#lrt-timetable)
+- [Background](#background)
 - [Attendance](#attendance)
 - [Error Response Format](#error-response-format)
 - [TypeScript Type Definitions](#typescript-type-definitions)
@@ -49,11 +50,13 @@ The backend's own `FRONTEND_URL` env var (default `http://localhost:5173`) is cu
 The API uses **Bearer JWT** access tokens. There is **no refresh-token endpoint**.
 
 **Obtaining a token** — call `/api/auth/login` (or `/api/auth/register`); the token is returned **only** in the JSON response body (there is no `Set-Cookie` header):
+
 ```json
 { "success": true, "data": { "user": { ... }, "accessToken": "eyJ..." } }
 ```
 
 **Sending a token** — store `accessToken` (e.g. in `localStorage` or a JS-readable cookie) and attach it to every protected request:
+
 ```http
 Authorization: Bearer <accessToken>
 ```
@@ -61,6 +64,7 @@ Authorization: Bearer <accessToken>
 **Token lifetime** — **7 days** by default (env `JWT_EXPIRES_IN`). After expiry the token is rejected with `401 "Invalid or expired token"` and the user must **log in again** (no silent refresh). Plan your UI to catch `401` and redirect to the login screen.
 
 **JWT payload** (for debugging only — do not rely on the client reading it):
+
 ```json
 { "userId": "clx...", "email": "user@example.com", "role": "USER" }
 ```
@@ -73,10 +77,12 @@ Authorization: Bearer <accessToken>
 ### Response envelope
 
 Every endpoint returns JSON. Successful responses:
+
 ```json
 { "success": true, "data": <payload> }            // most endpoints
 { "success": true, "message": "..." }             // action endpoints (delete/reset)
 ```
+
 List endpoints put the array inside `data`; mutation endpoints put the created/updated object inside `data`.
 
 ### Conventions the frontend should rely on
@@ -105,19 +111,20 @@ List endpoints put the array inside `data`; mutation endpoints put the created/u
 ```ts
 const API = {
   async request<T>(path: string, init: RequestInit = {}): Promise<T> {
-    const token = localStorage.getItem('accessToken');
+    const token = localStorage.getItem("accessToken");
     const res = await fetch(`/api${path}`, {
       ...init,
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        ...init.headers,
-      },
+        ...init.headers
+      }
     });
     const body = await res.json().catch(() => null);
-    if (!res.ok || !body?.success) throw new Error(body?.error ?? `HTTP ${res.status}`);
+    if (!res.ok || !body?.success)
+      throw new Error(body?.error ?? `HTTP ${res.status}`);
     return body.data ?? body;
-  },
+  }
 };
 // Usage: const user = await API.request<User>('/users/me');
 ```
@@ -126,19 +133,21 @@ const API = {
 
 ## Health & Root
 
-| Method | Path       | Auth | Description                |
-|--------|------------|------|----------------------------|
-| GET    | `/health`  | No   | Health check               |
-| GET    | `/`        | No   | Hello world (legacy route) |
+| Method | Path      | Auth | Description                |
+| ------ | --------- | ---- | -------------------------- |
+| GET    | `/health` | No   | Health check               |
+| GET    | `/`       | No   | Hello world (legacy route) |
 
 ### Responses
 
 **`GET /health`**
+
 ```json
 { "status": "ok" }
 ```
 
 **`GET /`**
+
 ```
 Hello, TypeScript!
 ```
@@ -149,16 +158,17 @@ Hello, TypeScript!
 
 Prefix: `/api/auth`
 
-| Method | Path                | Auth | Description                                                     |
-|--------|---------------------|------|-----------------------------------------------------------------|
-| POST   | `/api/auth/register` | No   | Create a new user account                                       |
-| POST   | `/api/auth/login`    | No   | Authenticate and receive an access token                        |
-| POST   | `/api/auth/forgot-password` | No | Request a password reset (sends email if account exists)        |
-| POST   | `/api/auth/reset-password` | No | Reset password using a token from the reset email               |
+| Method | Path                        | Auth | Description                                              |
+| ------ | --------------------------- | ---- | -------------------------------------------------------- |
+| POST   | `/api/auth/register`        | No   | Create a new user account                                |
+| POST   | `/api/auth/login`           | No   | Authenticate and receive an access token                 |
+| POST   | `/api/auth/forgot-password` | No   | Request a password reset (sends email if account exists) |
+| POST   | `/api/auth/reset-password`  | No   | Reset password using a token from the reset email        |
 
 ### POST `/api/auth/register`
 
 **Request body**
+
 ```json
 {
   "email": "user@example.com",
@@ -169,6 +179,7 @@ Prefix: `/api/auth`
 ```
 
 **Password rules**
+
 - Min 8 characters, max 128
 - At least 1 uppercase letter
 - At least 1 lowercase letter
@@ -176,6 +187,7 @@ Prefix: `/api/auth`
 - At least 1 special character
 
 **Response `201`**
+
 ```json
 {
   "success": true,
@@ -196,6 +208,7 @@ Prefix: `/api/auth`
 ```
 
 **Error `409`** — duplicate email
+
 ```json
 { "success": false, "error": "An account with this email already exists" }
 ```
@@ -203,6 +216,7 @@ Prefix: `/api/auth`
 ### POST `/api/auth/login`
 
 **Request body**
+
 ```json
 {
   "email": "user@example.com",
@@ -213,11 +227,13 @@ Prefix: `/api/auth`
 **Response `200`** — same shape as register (`user` + `accessToken`)
 
 **Error `401`**
+
 ```json
 { "success": false, "error": "Invalid email or password" }
 ```
 
 **Error `403`**
+
 ```json
 { "success": false, "error": "Account is deactivated" }
 ```
@@ -225,6 +241,7 @@ Prefix: `/api/auth`
 ### POST `/api/auth/forgot-password`
 
 **Request body**
+
 ```json
 {
   "email": "user@example.com"
@@ -232,6 +249,7 @@ Prefix: `/api/auth`
 ```
 
 **Response `200`** (always, to avoid email enumeration)
+
 ```json
 {
   "success": true,
@@ -242,6 +260,7 @@ Prefix: `/api/auth`
 ### POST `/api/auth/reset-password`
 
 **Request body**
+
 ```json
 {
   "token": "hex-encoded-64-char-token",
@@ -250,6 +269,7 @@ Prefix: `/api/auth`
 ```
 
 **Response `200`**
+
 ```json
 {
   "success": true,
@@ -258,6 +278,7 @@ Prefix: `/api/auth`
 ```
 
 **Error `400`**
+
 ```json
 { "success": false, "error": "Invalid or expired reset token" }
 ```
@@ -268,14 +289,15 @@ Prefix: `/api/auth`
 
 Prefix: `/api/users`
 
-| Method | Path             | Auth | Description                     |
-|--------|------------------|------|---------------------------------|
-| GET    | `/api/users`     | No   | List all users (no auth needed) |
-| GET    | `/api/users/me`  | Yes  | Get the currently authenticated user |
+| Method | Path            | Auth | Description                          |
+| ------ | --------------- | ---- | ------------------------------------ |
+| GET    | `/api/users`    | No   | List all users (no auth needed)      |
+| GET    | `/api/users/me` | Yes  | Get the currently authenticated user |
 
 ### GET `/api/users`
 
 **Response `200`**
+
 ```json
 {
   "success": true,
@@ -297,11 +319,13 @@ Prefix: `/api/users`
 ### GET `/api/users/me`
 
 **Headers**
+
 ```
 Authorization: Bearer <accessToken>
 ```
 
 **Response `200`**
+
 ```json
 {
   "success": true,
@@ -319,6 +343,7 @@ Authorization: Bearer <accessToken>
 ```
 
 **Error `401`**
+
 ```json
 { "success": false, "error": "Missing or invalid authorization header" }
 ```
@@ -331,25 +356,27 @@ Prefix: `/api/folders`
 
 All folder endpoints require authentication via `Authorization: Bearer <accessToken>`.
 
-| Method | Path                | Auth | Description                       |
-|--------|---------------------|------|-----------------------------------|
-| POST   | `/api/folders`      | Yes  | Create a new folder               |
-| GET    | `/api/folders`      | Yes  | List all folders for the user     |
-| GET    | `/api/folders/:id`  | Yes  | Get a single folder by ID         |
-| PATCH  | `/api/folders/:id`  | Yes  | Update a folder (name / parentId) |
-| DELETE | `/api/folders/:id`  | Yes  | Delete a folder                   |
+| Method | Path               | Auth | Description                       |
+| ------ | ------------------ | ---- | --------------------------------- |
+| POST   | `/api/folders`     | Yes  | Create a new folder               |
+| GET    | `/api/folders`     | Yes  | List all folders for the user     |
+| GET    | `/api/folders/:id` | Yes  | Get a single folder by ID         |
+| PATCH  | `/api/folders/:id` | Yes  | Update a folder (name / parentId) |
+| DELETE | `/api/folders/:id` | Yes  | Delete a folder                   |
 
 ### POST `/api/folders`
 
 **Request body**
+
 ```json
 {
   "name": "Bookmarks",
-  "parentId": "clx..."   // optional, for nested folders
+  "parentId": "clx..." // optional, for nested folders
 }
 ```
 
 **Response `201`**
+
 ```json
 {
   "success": true,
@@ -366,6 +393,7 @@ All folder endpoints require authentication via `Authorization: Bearer <accessTo
 ### GET `/api/folders`
 
 **Response `200`**
+
 ```json
 {
   "success": true,
@@ -388,10 +416,11 @@ All folder endpoints require authentication via `Authorization: Bearer <accessTo
 ### PATCH `/api/folders/:id`
 
 **Request body** (at least one field required)
+
 ```json
 {
   "name": "Renamed",
-  "parentId": null   // set to null to move to root level
+  "parentId": null // set to null to move to root level
 }
 ```
 
@@ -400,6 +429,7 @@ All folder endpoints require authentication via `Authorization: Bearer <accessTo
 ### DELETE `/api/folders/:id`
 
 **Response `200`**
+
 ```json
 {
   "success": true,
@@ -415,26 +445,28 @@ Prefix: `/api/favlinks`
 
 All favlink endpoints require authentication via `Authorization: Bearer <accessToken>`.
 
-| Method | Path                 | Auth | Description                           |
-|--------|----------------------|------|---------------------------------------|
-| POST   | `/api/favlinks`      | Yes  | Create a new favlink                  |
-| GET    | `/api/favlinks`      | Yes  | List favlinks (optional `folderId` query) |
-| GET    | `/api/favlinks/:id`  | Yes  | Get a single favlink by ID            |
-| PATCH  | `/api/favlinks/:id`  | Yes  | Update a favlink                      |
-| DELETE | `/api/favlinks/:id`  | Yes  | Delete a favlink                      |
+| Method | Path                | Auth | Description                               |
+| ------ | ------------------- | ---- | ----------------------------------------- |
+| POST   | `/api/favlinks`     | Yes  | Create a new favlink                      |
+| GET    | `/api/favlinks`     | Yes  | List favlinks (optional `folderId` query) |
+| GET    | `/api/favlinks/:id` | Yes  | Get a single favlink by ID                |
+| PATCH  | `/api/favlinks/:id` | Yes  | Update a favlink                          |
+| DELETE | `/api/favlinks/:id` | Yes  | Delete a favlink                          |
 
 ### POST `/api/favlinks`
 
 **Request body**
+
 ```json
 {
   "title": "GitHub",
   "url": "https://github.com",
-  "folderId": "clx..."   // optional, omit or leave out for uncategorized
+  "folderId": "clx..." // optional, omit or leave out for uncategorized
 }
 ```
 
 **Response `201`**
+
 ```json
 {
   "success": true,
@@ -454,7 +486,7 @@ All favlink endpoints require authentication via `Authorization: Bearer <accessT
 **Query parameters**
 
 | Param      | Type   | Required | Description                                 |
-|------------|--------|----------|---------------------------------------------|
+| ---------- | ------ | -------- | ------------------------------------------- |
 | `folderId` | string | No       | Filter favlinks by folder. Omit to get all. |
 
 **Response `200`** — array of favlink objects
@@ -466,11 +498,12 @@ All favlink endpoints require authentication via `Authorization: Bearer <accessT
 ### PATCH `/api/favlinks/:id`
 
 **Request body** (at least one field required)
+
 ```json
 {
   "title": "Updated Title",
   "url": "https://new-url.com",
-  "folderId": null     // set to null to remove from folder
+  "folderId": null // set to null to remove from folder
 }
 ```
 
@@ -479,6 +512,7 @@ All favlink endpoints require authentication via `Authorization: Bearer <accessT
 ### DELETE `/api/favlinks/:id`
 
 **Response `200`**
+
 ```json
 {
   "success": true,
@@ -494,18 +528,18 @@ Prefix: `/api/weather`
 
 No authentication required. Works with optional `lat` / `lon` query params for accuracy.
 
-| Method | Path              | Auth | Description                                                                 |
-|--------|-------------------|------|-----------------------------------------------------------------------------|
-| GET    | `/api/weather`    | No   | Get current weather. No params → IP geolocation. Pass `lat`+`lon` for accuracy. |
+| Method | Path           | Auth | Description                                                                     |
+| ------ | -------------- | ---- | ------------------------------------------------------------------------------- |
+| GET    | `/api/weather` | No   | Get current weather. No params → IP geolocation. Pass `lat`+`lon` for accuracy. |
 
 ### GET `/api/weather`
 
 **Query parameters** (both optional; must be provided together)
 
-| Param | Type   | Required | Description                            |
-|-------|--------|----------|----------------------------------------|
-| `lat` | number | No       | Latitude (-90 to 90)                   |
-| `lon` | number | No       | Longitude (-180 to 180)                |
+| Param | Type   | Required | Description             |
+| ----- | ------ | -------- | ----------------------- |
+| `lat` | number | No       | Latitude (-90 to 90)    |
+| `lon` | number | No       | Longitude (-180 to 180) |
 
 If `lat` and `lon` are omitted, the endpoint geolocates the request IP address via **ip-api.com** (free) to derive an approximate location, then fetches weather for that location.
 
@@ -553,11 +587,13 @@ curl "http://localhost:3000/api/weather?lat=19.076&lon=72.8777"
 ```
 
 **Error `400`** — partial coordinates
+
 ```json
 { "success": false, "error": "Both lat and lon must be provided together" }
 ```
 
 **Error `502`** — upstream API failure
+
 ```json
 { "success": false, "error": "Failed to determine location from IP address" }
 ```
@@ -572,19 +608,19 @@ No authentication required. Serves the **Utsunomiya-Haga LRT** timetable (2026/4
 inbound/outbound × weekday/holiday → **367 trips, 19 stations, 6973 stop times** in the database.
 
 | Method | Path                 | Auth | Description                                                              |
-|--------|----------------------|------|--------------------------------------------------------------------------|
+| ------ | -------------------- | ---- | ------------------------------------------------------------------------ |
 | GET    | `/api/lrt/timetable` | No   | Get the full timetable for a day (auto weekday/holiday, optional filter) |
-| GET    | `/api/lrt/stations` | No   | List the 19 stations in inbound order (with English/romaji names)        |
+| GET    | `/api/lrt/stations`  | No   | List the 19 stations in inbound order (with English/romaji names)        |
 | GET    | `/api/lrt/search`    | No   | Find trains between a **from** and **to** station for a given date       |
 
 ### GET `/api/lrt/timetable`
 
 **Query parameters** (all optional)
 
-| Param       | Type   | Required | Description                                                                               |
-|-------------|--------|----------|-------------------------------------------------------------------------------------------|
-| `date`      | string | No       | `YYYY-MM-DD`. Defaults to today (UTC).                                                    |
-| `direction` | enum   | No       | `INBOUND` (上り) or `OUTBOUND` (下り). Omit to return both.                              |
+| Param       | Type   | Required | Description                                                                                   |
+| ----------- | ------ | -------- | --------------------------------------------------------------------------------------------- |
+| `date`      | string | No       | `YYYY-MM-DD`. Defaults to today (UTC).                                                        |
+| `direction` | enum   | No       | `INBOUND` (上り) or `OUTBOUND` (下り). Omit to return both.                                   |
 | `dayType`   | enum   | No       | `WEEKDAY` or `HOLIDAY`. Overrides auto-detection (e.g. force a holiday schedule on a Monday). |
 
 **Day-type auto-detection**: Saturday, Sunday, and Japanese public holidays (祝日, 2026 set hardcoded in `lrt.service.ts`) → `HOLIDAY`; otherwise `WEEKDAY`. Override with `?dayType=`.
@@ -625,14 +661,41 @@ curl "http://localhost:3000/api/lrt/timetable?date=2026-04-06&dayType=HOLIDAY"
             "firstDepartureNextDay": false,
             "stopsServed": 7,
             "stops": [
-              { "stopSequence": 0, "stationCode": 0, "stationName": "芳賀・高根沢工業団地", "stationNameEn": "Haga-Takanezawa Industrial Park", "arrival": null, "departure": null, "isNextDay": false, "stopType": "NOSERVICE" },
-              { "stopSequence": 13, "stationCode": 13, "stationName": "平石", "stationNameEn": "Hiraishi", "arrival": null, "departure": "5:41", "isNextDay": false, "stopType": "STOP" },
-              { "stopSequence": 18, "stationCode": 18, "stationName": "宇都宮駅東口", "stationNameEn": "Utsunomiya Station East Exit", "arrival": "5:56", "departure": null, "isNextDay": false, "stopType": "STOP" }
+              {
+                "stopSequence": 0,
+                "stationCode": 0,
+                "stationName": "芳賀・高根沢工業団地",
+                "stationNameEn": "Haga-Takanezawa Industrial Park",
+                "arrival": null,
+                "departure": null,
+                "isNextDay": false,
+                "stopType": "NOSERVICE"
+              },
+              {
+                "stopSequence": 13,
+                "stationCode": 13,
+                "stationName": "平石",
+                "stationNameEn": "Hiraishi",
+                "arrival": null,
+                "departure": "5:41",
+                "isNextDay": false,
+                "stopType": "STOP"
+              },
+              {
+                "stopSequence": 18,
+                "stationCode": 18,
+                "stationName": "宇都宮駅東口",
+                "stationNameEn": "Utsunomiya Station East Exit",
+                "arrival": "5:56",
+                "departure": null,
+                "isNextDay": false,
+                "stopType": "STOP"
+              }
             ]
           }
         ]
       },
-      { "direction": "OUTBOUND", "tripCount": 81, "trips": [ "..." ] }
+      { "direction": "OUTBOUND", "tripCount": 81, "trips": ["..."] }
     ]
   }
 }
@@ -650,32 +713,54 @@ curl "http://localhost:3000/api/lrt/timetable?date=2026-04-06&dayType=HOLIDAY"
 - `trainType` — `LOCAL` (各停) or `RAPID` (快速; weekday outbound only).
 
 **Error `400`** — malformed query
+
 ```json
 { "success": false, "error": "date is not a valid calendar date" }
 ```
 
 **Error `404`** — database not seeded
+
 ```json
-{ "success": false, "error": "No LRT timetable data found. Run the seed:lrt script to load the timetable." }
+{
+  "success": false,
+  "error": "No LRT timetable data found. Run the seed:lrt script to load the timetable."
+}
 ```
 
 ### GET `/api/lrt/stations`
 
 **Response `200`** — 19 stations in inbound order:
+
 ```json
 {
   "success": true,
   "data": {
     "stations": [
-      { "code": 0,  "name": "芳賀・高根沢工業団地",         "nameEn": "Haga-Takanezawa Industrial Park", "nameRomaji": "haga-takanezawa-kogyo-danchi" },
-      { "code": 13, "name": "平石",                          "nameEn": "Hiraishi",                          "nameRomaji": "hiraishi" },
-      { "code": 18, "name": "宇都宮駅東口",                 "nameEn": "Utsunomiya Station East Exit",      "nameRomaji": "utsunomiya-eki-higashiguchi" }
+      {
+        "code": 0,
+        "name": "芳賀・高根沢工業団地",
+        "nameEn": "Haga-Takanezawa Industrial Park",
+        "nameRomaji": "haga-takanezawa-kogyo-danchi"
+      },
+      {
+        "code": 13,
+        "name": "平石",
+        "nameEn": "Hiraishi",
+        "nameRomaji": "hiraishi"
+      },
+      {
+        "code": 18,
+        "name": "宇都宮駅東口",
+        "nameEn": "Utsunomiya Station East Exit",
+        "nameRomaji": "utsunomiya-eki-higashiguchi"
+      }
     ]
   }
 }
 ```
 
 **Loading the data** (one-time):
+
 ```bash
 npm run parse:lrt   # re-extract PDFs in lrt/  -> prisma/lrdata.json  (requires pdfplumber)
 npm run seed:lrt    # load JSON into the database
@@ -688,13 +773,13 @@ and travel time for each. This is the endpoint a user would call to plan a trip.
 
 **Query parameters**
 
-| Param          | Type   | Required | Description                                                                                          |
-|----------------|--------|----------|------------------------------------------------------------------------------------------------------|
-| `date`         | string | No       | `YYYY-MM-DD`. Defaults to today (UTC).                                                               |
+| Param          | Type   | Required | Description                                                                                             |
+| -------------- | ------ | -------- | ------------------------------------------------------------------------------------------------------- |
+| `date`         | string | No       | `YYYY-MM-DD`. Defaults to today (UTC).                                                                  |
 | `from`         | string | **Yes**  | Origin station — a station **code** (`"0"`), Japanese name, English name, or romaji (case-insensitive). |
-| `to`           | string | **Yes**  | Destination station — same ref formats as `from`. Must differ from `from`.                          |
-| `dayType`      | enum   | No       | `WEEKDAY` or `HOLIDAY`. Overrides auto-detection.                                                    |
-| `includeStops` | bool   | No       | Include the full per-station stops array per trip. Default `true`. Set `false` for a lighter payload. |
+| `to`           | string | **Yes**  | Destination station — same ref formats as `from`. Must differ from `from`.                              |
+| `dayType`      | enum   | No       | `WEEKDAY` or `HOLIDAY`. Overrides auto-detection.                                                       |
+| `includeStops` | bool   | No       | Include the full per-station stops array per trip. Default `true`. Set `false` for a lighter payload.   |
 
 **Direction is inferred automatically** from the station codes: `from` code < `to` code → `INBOUND`
 (toward Utsunomiya Station East Exit); otherwise `OUTBOUND`. Only trains that **stop at both**
@@ -723,8 +808,18 @@ curl "http://localhost:3000/api/lrt/search?from=Hiraishi&to=Utsunomiya+Station+E
     "date": "2026-04-06",
     "dayType": "WEEKDAY",
     "isToday": false,
-    "from": { "code": 0, "name": "芳賀·高根沢工業団地", "nameEn": "Haga-Takanezawa Industrial Park", "nameRomaji": "haga-takanezawa-kogyo-danchi" },
-    "to":   { "code": 18, "name": "宇都宮駅東口", "nameEn": "Utsunomiya Station East Exit", "nameRomaji": "utsunomiya-eki-higashiguchi" },
+    "from": {
+      "code": 0,
+      "name": "芳賀·高根沢工業団地",
+      "nameEn": "Haga-Takanezawa Industrial Park",
+      "nameRomaji": "haga-takanezawa-kogyo-danchi"
+    },
+    "to": {
+      "code": 18,
+      "name": "宇都宮駅東口",
+      "nameEn": "Utsunomiya Station East Exit",
+      "nameRomaji": "utsunomiya-eki-higashiguchi"
+    },
     "direction": "INBOUND",
     "tripCount": 85,
     "trips": [
@@ -732,11 +827,25 @@ curl "http://localhost:3000/api/lrt/search?from=Hiraishi&to=Utsunomiya+Station+E
         "tripIndex": 0,
         "trainType": "LOCAL",
         "direction": "INBOUND",
-        "from": { "stationCode": 0,  "stationName": "芳賀·高根沢工業団地", "stationNameEn": "Haga-Takanezawa Industrial Park", "time": "5:26", "isNextDay": false },
-        "to":   { "stationCode": 18, "stationName": "宇都宮駅東口", "stationNameEn": "Utsunomiya Station East Exit", "time": "6:10", "isNextDay": false },
+        "from": {
+          "stationCode": 0,
+          "stationName": "芳賀·高根沢工業団地",
+          "stationNameEn": "Haga-Takanezawa Industrial Park",
+          "time": "5:26",
+          "isNextDay": false
+        },
+        "to": {
+          "stationCode": 18,
+          "stationName": "宇都宮駅東口",
+          "stationNameEn": "Utsunomiya Station East Exit",
+          "time": "6:10",
+          "isNextDay": false
+        },
         "durationMins": 44,
         "stopsBetween": 17,
-        "stops": [ /* full per-station stops, same shape as /timetable ("...") */ ]
+        "stops": [
+          /* full per-station stops, same shape as /timetable ("...") */
+        ]
       }
     ]
   }
@@ -752,14 +861,70 @@ curl "http://localhost:3000/api/lrt/search?from=Hiraishi&to=Utsunomiya+Station+E
 
 **Errors**
 
-| Status | Condition                                              |
-|--------|--------------------------------------------------------|
-| 400    | `from`/`to` missing, equal, or `date` malformed         |
-| 404    | `from` or `to` does not match any station               |
+| Status | Condition                                       |
+| ------ | ----------------------------------------------- |
+| 400    | `from`/`to` missing, equal, or `date` malformed |
+| 404    | `from` or `to` does not match any station       |
 
 ```json
 { "success": false, "error": "from and to must be different stations" }
 { "success": false, "error": "Unknown station: \"Tokyo\"" }
+```
+
+---
+
+## Background
+
+Prefix: `/api/background`
+
+No authentication required. Returns a curated Unsplash landscape photo, refreshed once per UTC day and cached in memory.
+
+| Method | Path              | Auth | Description                  |
+| ------ | ----------------- | ---- | ---------------------------- |
+| GET    | `/api/background` | No   | Get a daily background image |
+
+### GET `/api/background`
+
+**Query parameters**
+
+| Param   | Type   | Required | Description                                                                                   |
+| ------- | ------ | -------- | --------------------------------------------------------------------------------------------- |
+| `query` | string | No       | Search term passed to Unsplash (e.g. `nature`, `city`). Defaults to a random landscape photo. |
+
+**Response `200`**
+
+```json
+{
+  "success": true,
+  "data": {
+    "image": {
+      "url": "https://images.unsplash.com/photo-...?w=1920&h=1080&fit=crop&q=80",
+      "alt": "A scenic mountain landscape",
+      "unsplashUrl": "https://unsplash.com/photos/...",
+      "photographer": {
+        "name": "Jane Doe",
+        "username": "janedoe",
+        "profileUrl": "https://unsplash.com/@janedoe"
+      }
+    }
+  }
+}
+```
+
+- The same image is returned for every caller until the UTC date rolls over or the server restarts.
+- `url` is already sized to `1920×1080` with `fit=crop` and `q=80`.
+- If the upstream Unsplash API call fails, the endpoint returns `502`.
+
+**Error `400`** — invalid query parameter
+
+```json
+{ "success": false, "error": "Query must be a non-empty string" }
+```
+
+**Error `502`** — upstream Unsplash API failure
+
+```json
+{ "success": false, "error": "Unsplash API error: ..." }
 ```
 
 ---
@@ -770,15 +935,15 @@ Prefix: `/api/attendance`
 
 Track check-in / check-out, one of each per user per day. All endpoints require authentication — every record belongs to the authenticated user, and users can only read/correct their own records.
 
-| Method | Path              | Auth | Description                                            |
-|--------|-------------------|------|--------------------------------------------------------|
-| POST   | `/clock-in`       | Yes  | Clock in for today                                     |
-| POST   | `/clock-out`      | Yes  | Clock out for today                                    |
-| GET    | `/me`             | Yes  | Get my attendance for a day (defaults to today)        |
-| GET    | `/me/range`       | Yes  | Get my attendance between two dates (inclusive)         |
-| GET    | `/me/month`       | Yes  | Get my attendance for a whole month + summary stats     |
-| PATCH  | `/:id`            | Yes  | Correct a record's check-in and/or check-out time      |
-| GET    | `/:id/history`   | Yes  | View the full correction history (audit trail) of a record |
+| Method | Path           | Auth | Description                                                |
+| ------ | -------------- | ---- | ---------------------------------------------------------- |
+| POST   | `/clock-in`    | Yes  | Clock in for today                                         |
+| POST   | `/clock-out`   | Yes  | Clock out for today                                        |
+| GET    | `/me`          | Yes  | Get my attendance for a day (defaults to today)            |
+| GET    | `/me/range`    | Yes  | Get my attendance between two dates (inclusive)            |
+| GET    | `/me/month`    | Yes  | Get my attendance for a whole month + summary stats        |
+| PATCH  | `/:id`         | Yes  | Correct a record's check-in and/or check-out time          |
+| GET    | `/:id/history` | Yes  | View the full correction history (audit trail) of a record |
 
 ### How "that day" is determined
 
@@ -790,8 +955,8 @@ All times are stored as UTC `DateTime` and rendered both as ISO 8601 (UTC) and a
 
 **Body** (all optional)
 
-| Field | Type   | Description                                          |
-|-------|--------|------------------------------------------------------|
+| Field | Type   | Description                                            |
+| ----- | ------ | ------------------------------------------------------ |
 | `tz`  | string | IANA timezone name (e.g. `Asia/Tokyo`). Default `UTC`. |
 
 **Response `201`**
@@ -818,13 +983,16 @@ All times are stored as UTC `DateTime` and rendered both as ISO 8601 (UTC) and a
 
 **Errors**
 
-| Status | Condition                                            |
-|--------|------------------------------------------------------|
-| 409    | Already clocked in today (use `PATCH /:id` to fix)    |
-| 400    | Unknown timezone name                                 |
+| Status | Condition                                          |
+| ------ | -------------------------------------------------- |
+| 409    | Already clocked in today (use `PATCH /:id` to fix) |
+| 400    | Unknown timezone name                              |
 
 ```json
-{ "success": false, "error": "Already clocked in on 2026-07-19 (Asia/Tokyo) at 19:38 — use the correct endpoint to fix it" }
+{
+  "success": false,
+  "error": "Already clocked in on 2026-07-19 (Asia/Tokyo) at 19:38 — use the correct endpoint to fix it"
+}
 ```
 
 ### POST `/api/attendance/clock-out`
@@ -836,18 +1004,18 @@ Same body (`tz`) as clock-in. Sets `checkOutAt` on the existing record for today
 **Errors**
 
 | Status | Condition                                           |
-|--------|-----------------------------------------------------|
+| ------ | --------------------------------------------------- |
 | 404    | No clock-in found for today in that timezone        |
-| 409    | Already clocked out today (use `PATCH /:id` to fix)  |
+| 409    | Already clocked out today (use `PATCH /:id` to fix) |
 | 400    | Server clock-out time is before the check-in time   |
 
 ### GET `/api/attendance/me`
 
 **Query** (all optional)
 
-| Param  | Type   | Description                                            |
-|--------|--------|--------------------------------------------------------|
-| `date` | string | `YYYY-MM-DD` (in `tz`). Defaults to today in `tz`.      |
+| Param  | Type   | Description                                                                                                          |
+| ------ | ------ | -------------------------------------------------------------------------------------------------------------------- |
+| `date` | string | `YYYY-MM-DD` (in `tz`). Defaults to today in `tz`.                                                                   |
 | `tz`   | string | IANA timezone name. Default `UTC`. Affects the date used and the `*Local` display formatting of the returned record. |
 
 **Response `200`**
@@ -858,7 +1026,9 @@ Same body (`tz`) as clock-in. Sets `checkOutAt` on the existing record for today
   "data": {
     "date": "2026-07-19",
     "timezone": "Asia/Tokyo",
-    "attendance": { /* AttendanceDTO, or null if no record that day */ }
+    "attendance": {
+      /* AttendanceDTO, or null if no record that day */
+    }
   }
 }
 ```
@@ -867,10 +1037,10 @@ Same body (`tz`) as clock-in. Sets `checkOutAt` on the existing record for today
 
 **Query**
 
-| Param  | Type   | Required | Description                                  |
-|--------|--------|----------|----------------------------------------------|
-| `from` | string | Yes      | `YYYY-MM-DD` (inclusive)                       |
-| `to`   | string | Yes      | `YYYY-MM-DD` (inclusive, must be `>= from`)     |
+| Param  | Type   | Required | Description                                       |
+| ------ | ------ | -------- | ------------------------------------------------- |
+| `from` | string | Yes      | `YYYY-MM-DD` (inclusive)                          |
+| `to`   | string | Yes      | `YYYY-MM-DD` (inclusive, must be `>= from`)       |
 | `tz`   | string | No       | IANA timezone name. Default `UTC` (display only). |
 
 **Response `200`**
@@ -883,7 +1053,9 @@ Same body (`tz`) as clock-in. Sets `checkOutAt` on the existing record for today
     "to": "2026-07-31",
     "timezone": "Asia/Tokyo",
     "count": 12,
-    "records": [ /* AttendanceDTO[] ordered by date ascending */ ]
+    "records": [
+      /* AttendanceDTO[] ordered by date ascending */
+    ]
   }
 }
 ```
@@ -894,10 +1066,10 @@ Get your attendance for an entire month in one call, **with a summary** of worke
 
 **Query** (all optional)
 
-| Param   | Type   | Description                                                                                          |
-|---------|--------|------------------------------------------------------------------------------------------------------|
+| Param   | Type   | Description                                                                                           |
+| ------- | ------ | ----------------------------------------------------------------------------------------------------- |
 | `month` | string | `YYYY-MM` (e.g. `2026-07`). Defaults to the current month in `tz`. Must be a valid month (`01`–`12`). |
-| `tz`    | string | IANA timezone name. Default `UTC`. Used to determine "current month" and to render `*Local` times.   |
+| `tz`    | string | IANA timezone name. Default `UTC`. Used to determine "current month" and to render `*Local` times.    |
 
 The response's `from`/`to` are the first and last calendar days of the month (inclusive). `records` only includes days that have an attendance record; gaps within the month are simply absent.
 
@@ -914,23 +1086,25 @@ The response's `from`/`to` are the first and last calendar days of the month (in
     "daysInMonth": 31,
     "count": 1,
     "summary": {
-      "daysPresent": 1,            // records with a check-in
-      "daysCompleted": 1,          // records with both check-in AND check-out
-      "daysClockedOutPending": 0,  // clocked in but not out yet
-      "totalWorkedMinutes": 510,    // sum over completed records
-      "averageWorkedMinutes": 510,  // per completed day (null if 0)
+      "daysPresent": 1, // records with a check-in
+      "daysCompleted": 1, // records with both check-in AND check-out
+      "daysClockedOutPending": 0, // clocked in but not out yet
+      "totalWorkedMinutes": 510, // sum over completed records
+      "averageWorkedMinutes": 510, // per completed day (null if 0)
       "longestDayMinutes": 510,
       "shortestDayMinutes": 510
     },
-    "records": [ /* AttendanceDTO[], ordered by date ascending */ ]
+    "records": [
+      /* AttendanceDTO[], ordered by date ascending */
+    ]
   }
 }
 ```
 
 **Errors**
 
-| Status | Condition                                             |
-|--------|-------------------------------------------------------|
+| Status | Condition                                                     |
+| ------ | ------------------------------------------------------------- |
 | 400    | `month` is not `YYYY-MM`, month out of range, or unknown `tz` |
 
 ```json
@@ -944,10 +1118,10 @@ Correct a record's check-in and/or check-out. Previous values are preserved in t
 
 **Body** (at least one field required)
 
-| Field      | Type   | Description                                            |
-|-----------|--------|--------------------------------------------------------|
-| `checkIn`  | string | New check-in time, `HH:MM` in the record's timezone.   |
-| `checkOut` | string | New check-out time, `HH:MM` in the record's timezone. |
+| Field      | Type   | Description                                              |
+| ---------- | ------ | -------------------------------------------------------- |
+| `checkIn`  | string | New check-in time, `HH:MM` in the record's timezone.     |
+| `checkOut` | string | New check-out time, `HH:MM` in the record's timezone.    |
 | `reason`   | string | Optional note (max 500 chars) explaining the correction. |
 
 A correction row is recorded **only for fields that actually change**. Times are parsed against the record's own `timezone` and stored as UTC instants, so corrections are timezone-aware.
@@ -983,10 +1157,10 @@ A correction row is recorded **only for fields that actually change**. Times are
 
 **Errors**
 
-| Status | Condition                                                |
-|--------|----------------------------------------------------------|
+| Status | Condition                                                                                 |
+| ------ | ----------------------------------------------------------------------------------------- |
 | 400    | Neither `checkIn` nor `checkOut` provided; bad `HH:MM`; or `checkOut` is before `checkIn` |
-| 404    | Record not found (or doesn't belong to the caller)        |
+| 404    | Record not found (or doesn't belong to the caller)                                        |
 
 ### GET `/api/attendance/:id/history`
 
@@ -999,7 +1173,17 @@ List the full edit history for one record (oldest first).
   "success": true,
   "data": {
     "edits": [
-      { "id": "cle001", "field": "CHECK_IN", "oldValue": "...", "oldValueLocal": "19:38", "newValue": "...", "newValueLocal": "09:00", "reason": "...", "editedAt": "...", "editedByUserId": "clyyyy" }
+      {
+        "id": "cle001",
+        "field": "CHECK_IN",
+        "oldValue": "...",
+        "oldValueLocal": "19:38",
+        "newValue": "...",
+        "newValueLocal": "09:00",
+        "reason": "...",
+        "editedAt": "...",
+        "editedByUserId": "clyyyy"
+      }
     ]
   }
 }
@@ -1012,11 +1196,13 @@ List the full edit history for one record (oldest first).
 All protected endpoints use **Bearer token** authentication.
 
 **Header format:**
+
 ```
 Authorization: Bearer <accessToken>
 ```
 
 The token is a signed JWT containing:
+
 - `userId` (string)
 - `email` (string)
 - `role` (string: `"USER"` or `"ADMIN"`)
@@ -1034,52 +1220,53 @@ All errors follow a consistent shape:
 }
 ```
 
-| Status Code | Meaning                        |
-|-------------|--------------------------------|
-| 400         | Validation error               |
-| 401         | Missing/invalid/expired token  |
-| 403         | Account deactivated            |
-| 404         | Resource not found (via Prisma)|
-| 409         | Duplicate resource (e.g., email)|
-| 500         | Internal server error          |
+| Status Code | Meaning                          |
+| ----------- | -------------------------------- |
+| 400         | Validation error                 |
+| 401         | Missing/invalid/expired token    |
+| 403         | Account deactivated              |
+| 404         | Resource not found (via Prisma)  |
+| 409         | Duplicate resource (e.g., email) |
+| 500         | Internal server error            |
 
 ---
 
 ## Summary — All Routes at a Glance
 
-| # | Method | Path                     | Auth | Description                |
-|---|--------|--------------------------|------|----------------------------|
-| 1 | GET    | `/health`                | —    | Health check               |
-| 2 | GET    | `/`                      | —    | Hello world                |
-| 3 | GET    | `/api/weather`           | —    | Get weather (IP or coords) |
-| 4 | POST   | `/api/auth/register`     | —    | Register                   |
-| 5 | POST   | `/api/auth/login`        | —    | Login                      |
-| 6 | POST   | `/api/auth/forgot-password` | — | Forgot password            |
-| 7 | POST   | `/api/auth/reset-password`  | — | Reset password             |
-| 8 | GET    | `/api/users`             | —    | List all users             |
-| 9 | GET    | `/api/users/me`          | Yes  | Get current user           |
-|10 | POST   | `/api/folders`           | Yes  | Create folder              |
-|11 | GET    | `/api/folders`           | Yes  | List folders               |
-|12 | GET    | `/api/folders/:id`       | Yes  | Get folder by ID           |
-|13 | PATCH  | `/api/folders/:id`       | Yes  | Update folder              |
-|14 | DELETE | `/api/folders/:id`       | Yes  | Delete folder              |
-|15 | POST   | `/api/favlinks`          | Yes  | Create favlink             |
-|16 | GET    | `/api/favlinks`          | Yes  | List favlinks              |
-|17 | GET    | `/api/favlinks/:id`      | Yes  | Get favlink by ID          |
-|18 | PATCH  | `/api/favlinks/:id`      | Yes  | Update favlink             |
-|19 | DELETE | `/api/favlinks/:id`      | Yes  | Delete favlink             |
-|20 | GET    | `/api/lrt/timetable`     | —    | LRT timetable for a day    |
-|21 | GET    | `/api/lrt/stations`      | —    | LRT station list (19)      |
-|22 | GET    | `/api/lrt/search`        | —    | LRT trains from→to for a date |
-|23 | POST   | `/api/attendance/clock-in` | Yes  | Clock in for today            |
-|24 | POST   | `/api/attendance/clock-out`| Yes  | Clock out for today           |
-|25 | GET    | `/api/attendance/me`     | Yes  | My attendance for a day       |
-|26 | GET    | `/api/attendance/me/range`| Yes  | My attendance by date range   |
-|27 | GET    | `/api/attendance/me/month`| Yes  | My attendance for a month + summary |
-|28 | PATCH  | `/api/attendance/:id`    | Yes  | Correct check-in/out time     |
-|29 | GET    | `/api/attendance/:id/history`| Yes| Attendance correction history |
+| #   | Method | Path                          | Auth | Description                         |
+| --- | ------ | ----------------------------- | ---- | ----------------------------------- |
+| 1   | GET    | `/health`                     | —    | Health check                        |
+| 2   | GET    | `/`                           | —    | Hello world                         |
+| 3   | GET    | `/api/weather`                | —    | Get weather (IP or coords)          |
+| 4   | POST   | `/api/auth/register`          | —    | Register                            |
+| 5   | POST   | `/api/auth/login`             | —    | Login                               |
+| 6   | POST   | `/api/auth/forgot-password`   | —    | Forgot password                     |
+| 7   | POST   | `/api/auth/reset-password`    | —    | Reset password                      |
+| 8   | GET    | `/api/users`                  | —    | List all users                      |
+| 9   | GET    | `/api/users/me`               | Yes  | Get current user                    |
+| 10  | POST   | `/api/folders`                | Yes  | Create folder                       |
+| 11  | GET    | `/api/folders`                | Yes  | List folders                        |
+| 12  | GET    | `/api/folders/:id`            | Yes  | Get folder by ID                    |
+| 13  | PATCH  | `/api/folders/:id`            | Yes  | Update folder                       |
+| 14  | DELETE | `/api/folders/:id`            | Yes  | Delete folder                       |
+| 15  | POST   | `/api/favlinks`               | Yes  | Create favlink                      |
+| 16  | GET    | `/api/favlinks`               | Yes  | List favlinks                       |
+| 17  | GET    | `/api/favlinks/:id`           | Yes  | Get favlink by ID                   |
+| 18  | PATCH  | `/api/favlinks/:id`           | Yes  | Update favlink                      |
+| 19  | DELETE | `/api/favlinks/:id`           | Yes  | Delete favlink                      |
+| 20  | GET    | `/api/lrt/timetable`          | —    | LRT timetable for a day             |
+| 21  | GET    | `/api/lrt/stations`           | —    | LRT station list (19)               |
+| 22  | GET    | `/api/lrt/search`             | —    | LRT trains from→to for a date       |
+| 23  | GET    | `/api/background`             | —    | Daily background image              |
+| 24  | POST   | `/api/attendance/clock-in`    | Yes  | Clock in for today                  |
+| 25  | POST   | `/api/attendance/clock-out`   | Yes  | Clock out for today                 |
+| 26  | GET    | `/api/attendance/me`          | Yes  | My attendance for a day             |
+| 27  | GET    | `/api/attendance/me/range`    | Yes  | My attendance by date range         |
+| 28  | GET    | `/api/attendance/me/month`    | Yes  | My attendance for a month + summary |
+| 29  | PATCH  | `/api/attendance/:id`         | Yes  | Correct check-in/out time           |
+| 30  | GET    | `/api/attendance/:id/history` | Yes  | Attendance correction history       |
 
-**Total: 29 endpoints** (6 public root/weather/lrt, 4 auth, 2 users, 5 folders, 5 favlinks, 7 attendance)
+**Total: 30 endpoints** (7 public root/weather/lrt/background, 4 auth, 2 users, 5 folders, 5 favlinks, 7 attendance)
 
 ---
 
@@ -1092,26 +1279,26 @@ the string values the API sends on the wire (stored as UTC ISO / `YYYY-MM-DD` / 
 ```ts
 // ── Shared responses ────────────────────────────────────────────────
 export type ApiSuccess<T> = { success: true; data: T };
-export type ApiMessage   = { success: true; message: string };
-export type ApiError     = { success: false; error: string };
+export type ApiMessage = { success: true; message: string };
+export type ApiError = { success: false; error: string };
 
 // ── Auth & Users ────────────────────────────────────────────────────
 export type Role = "USER" | "ADMIN";
 
 export interface User {
-  id: string;            // Prisma CUID, e.g. "clx..."
+  id: string; // Prisma CUID, e.g. "clx..."
   email: string;
   firstName: string | null;
   lastName: string | null;
   role: Role;
   isVerified: boolean;
   isActive: boolean;
-  createdAt: string;     // UTC ISO 8601
+  createdAt: string; // UTC ISO 8601
 }
 
 export interface AuthResponse {
   user: User;
-  accessToken: string;   // JWT, 7d default lifetime
+  accessToken: string; // JWT, 7d default lifetime
 }
 
 // ── Folders ─────────────────────────────────────────────────────────
@@ -1140,17 +1327,17 @@ export interface WeatherLocation {
   country: string;
   lat: number;
   lon: number;
-  source: "ip" | "user";   // "ip" = geolocated, "user" = lat/lon supplied
+  source: "ip" | "user"; // "ip" = geolocated, "user" = lat/lon supplied
 }
 
 export interface WeatherConditions {
-  temperature: number;     // °C
-  feelsLike: number;       // °C
+  temperature: number; // °C
+  feelsLike: number; // °C
   condition: string;
-  conditionCode: number;   // WMO weather interpretation code
-  humidity: number;       // %
-  windSpeed: number;      // km/h
-  windDirection: number;  // degrees
+  conditionCode: number; // WMO weather interpretation code
+  humidity: number; // %
+  windSpeed: number; // km/h
+  windDirection: number; // degrees
 }
 
 export interface WeatherResponse {
@@ -1158,15 +1345,33 @@ export interface WeatherResponse {
   weather: WeatherConditions;
 }
 
+// ── Background ──────────────────────────────────────────────────────
+export interface PhotographerCredit {
+  name: string;
+  username: string;
+  profileUrl: string;
+}
+
+export interface BackgroundImage {
+  url: string; // 1920x1080 cropped Unsplash image URL
+  alt: string | null; // Photo description
+  unsplashUrl: string; // Link to the photo on Unsplash
+  photographer: PhotographerCredit;
+}
+
+export interface BackgroundResponse {
+  image: BackgroundImage;
+}
+
 // ── LRT Timetable ──────────────────────────────────────────────────
-export type LrtDayType   = "WEEKDAY" | "HOLIDAY";
+export type LrtDayType = "WEEKDAY" | "HOLIDAY";
 export type LrtDirection = "INBOUND" | "OUTBOUND";
 export type LrtTrainType = "LOCAL" | "RAPID";
-export type LrtStopType  = "STOP" | "PASS" | "NOSERVICE";
+export type LrtStopType = "STOP" | "PASS" | "NOSERVICE";
 
 export interface Station {
-  code: number;            // 0..18, inbound order
-  name: string;            // Japanese
+  code: number; // 0..18, inbound order
+  name: string; // Japanese
   nameEn: string | null;
   nameRomaji: string | null;
 }
@@ -1176,7 +1381,7 @@ export interface Stop {
   stationCode: number;
   stationName: string;
   stationNameEn: string | null;
-  arrival: string | null;   // "H:MM" 24h (leading zero omitted)
+  arrival: string | null; // "H:MM" 24h (leading zero omitted)
   departure: string | null; // "H:MM" 24h
   isNextDay: boolean;
   stopType: LrtStopType;
@@ -1200,20 +1405,22 @@ export interface DirectionTimetable {
 }
 
 export interface LrtTimetableResponse {
-  date: string;            // YYYY-MM-DD
+  date: string; // YYYY-MM-DD
   dayType: LrtDayType;
   isToday: boolean;
   directions: DirectionTimetable[];
 }
 
-export interface LrtStationsResponse { stations: Station[] }
+export interface LrtStationsResponse {
+  stations: Station[];
+}
 
 // ── LRT Route search ────────────────────────────────────────────────
 export interface RouteStop {
   stationCode: number;
   stationName: string;
   stationNameEn: string | null;
-  time: string | null;     // departure at origin / arrival at destination
+  time: string | null; // departure at origin / arrival at destination
   isNextDay: boolean;
 }
 
@@ -1224,8 +1431,8 @@ export interface RouteTrip {
   from: RouteStop;
   to: RouteStop;
   durationMins: number;
-  stopsBetween: number;    // intermediate stations, exclusive of endpoints
-  stops: Stop[];           // full journey, same shape as /timetable
+  stopsBetween: number; // intermediate stations, exclusive of endpoints
+  stops: Stop[]; // full journey, same shape as /timetable
 }
 
 export interface LrtRouteSearchResponse {
@@ -1245,25 +1452,25 @@ export type AttendanceField = "CHECK_IN" | "CHECK_OUT";
 export interface AttendanceEdit {
   id: string;
   field: AttendanceField;
-  oldValue: string | null;     // UTC ISO
-  oldValueLocal: string | null;// "HH:MM" in record tz
+  oldValue: string | null; // UTC ISO
+  oldValueLocal: string | null; // "HH:MM" in record tz
   newValue: string | null;
   newValueLocal: string | null;
   reason: string | null;
-  editedAt: string;            // UTC ISO
+  editedAt: string; // UTC ISO
   editedByUserId: string;
 }
 
 export interface Attendance {
   id: string;
   userId: string;
-  date: string;               // YYYY-MM-DD (record's timezone)
-  timezone: string;           // IANA name, e.g. "Asia/Tokyo"
-  checkInAt: string | null;   // UTC ISO
+  date: string; // YYYY-MM-DD (record's timezone)
+  timezone: string; // IANA name, e.g. "Asia/Tokyo"
+  checkInAt: string | null; // UTC ISO
   checkOutAt: string | null;
   checkInLocal: string | null;
   checkOutLocal: string | null;
-  workedMinutes: number | null;// null until checked out
+  workedMinutes: number | null; // null until checked out
   createdAt: string;
   updatedAt: string;
   edits: AttendanceEdit[];
@@ -1280,7 +1487,7 @@ export interface AttendanceRange {
   to: string;
   timezone: string;
   count: number;
-  records: Attendance[];      // ordered by date ascending
+  records: Attendance[]; // ordered by date ascending
 }
 
 export interface AttendanceSummary {
@@ -1294,10 +1501,10 @@ export interface AttendanceSummary {
 }
 
 export interface AttendanceMonth {
-  month: string;              // YYYY-MM
+  month: string; // YYYY-MM
   timezone: string;
-  from: string;               // YYYY-MM-DD
-  to: string;                 // YYYY-MM-DD
+  from: string; // YYYY-MM-DD
+  to: string; // YYYY-MM-DD
   daysInMonth: number;
   count: number;
   summary: AttendanceSummary;
@@ -1305,6 +1512,6 @@ export interface AttendanceMonth {
 }
 
 export interface AttendanceEditHistory {
-  edits: AttendanceEdit[];    // oldest first
+  edits: AttendanceEdit[]; // oldest first
 }
 ```
