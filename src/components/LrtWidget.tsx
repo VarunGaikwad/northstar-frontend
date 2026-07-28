@@ -113,7 +113,7 @@ export function LrtWidget() {
           >
             {stations.map((s) => (
               <option key={s.code} value={s.code}>
-                {s.nameEn ?? s.name}
+                {s.name}
               </option>
             ))}
           </select>
@@ -139,7 +139,7 @@ export function LrtWidget() {
           >
             {stations.map((s) => (
               <option key={s.code} value={s.code}>
-                {s.nameEn ?? s.name}
+                {s.name}
               </option>
             ))}
           </select>
@@ -162,11 +162,11 @@ export function LrtWidget() {
 
       {!sameStation && !stationsLoading && !searchLoading && !error && from && to && (
         <div className="flex items-center justify-between mb-3 px-1 shrink-0">
-          <span className="text-xs font-semibold text-white/70">{from.nameEn}</span>
+          <span className="text-xs font-semibold text-white/70">{from.name}</span>
           <Badge variant={direction === "INBOUND" ? "primary" : "success"} size="sm">
             {direction === "INBOUND" ? "Inbound →" : "← Outbound"}
           </Badge>
-          <span className="text-xs font-semibold text-white/70">{to.nameEn}</span>
+          <span className="text-xs font-semibold text-white/70">{to.name}</span>
         </div>
       )}
 

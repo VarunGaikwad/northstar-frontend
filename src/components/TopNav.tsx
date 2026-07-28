@@ -1,4 +1,4 @@
-import { Bookmark, Clock, ExternalLink, LogOut, TrainFront } from "lucide-react";
+import { Bookmark, ExternalLink, LogOut, TrainFront } from "lucide-react";
 import { useAuth } from "../auth/useAuth";
 import { CalendarBadge } from "./CalendarBadge";
 import { FocusBadge } from "./FocusBadge";
@@ -16,7 +16,7 @@ export function TopNav({
   onOpenLinks,
   onOpenLrt,
   onOpenAttendance,
-  onOpenWeather,
+  onOpenWeather
 }: TopNavProps) {
   const { logout } = useAuth();
 
@@ -31,6 +31,7 @@ export function TopNav({
         >
           <Bookmark className="w-4 h-4 text-indigo-400" />
           <span>Links</span>
+          <kbd className="ml-1 hidden sm:inline-block rounded bg-white/10 px-1 py-0.5 text-[10px] font-medium text-white/50">Alt+L</kbd>
         </button>
 
         <a
@@ -50,15 +51,7 @@ export function TopNav({
         >
           <TrainFront className="w-4 h-4 text-purple-400" />
           <span>LRT</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={onOpenAttendance}
-          className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-semibold text-white/80 hover:text-white hover:bg-white/10 transition-all cursor-pointer active:scale-95"
-        >
-          <Clock className="w-4 h-4 text-emerald-400" />
-          <span>Attendance</span>
+          <kbd className="ml-1 hidden sm:inline-block rounded bg-white/10 px-1 py-0.5 text-[10px] font-medium text-white/50">Alt+T</kbd>
         </button>
       </div>
 

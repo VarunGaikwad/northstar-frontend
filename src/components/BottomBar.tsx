@@ -1,11 +1,12 @@
 import { Image as ImageIcon, Sparkles, Compass } from "lucide-react";
 import type { BackgroundImage } from "../api/types";
+import { useQuote } from "../api/endpoints/quote";
 
 interface BottomBarProps {
   background?: BackgroundImage;
 }
 
-const QUOTES = [
+const DEFAULT_QUOTES = [
   "Do not let what you cannot do interfere with what you can do.",
   "Focus on being productive instead of busy.",
   "Small daily improvements over time lead to stunning results.",
@@ -13,7 +14,8 @@ const QUOTES = [
 ];
 
 export function BottomBar({ background }: BottomBarProps) {
-  const quote = QUOTES[0];
+  const { data } = useQuote();
+  const quote = data?.quote.text ?? DEFAULT_QUOTES[0];
 
   return (
     <div className="absolute bottom-0 left-0 right-0 z-20 flex items-center justify-between px-6 py-4 text-xs font-medium text-white/80">

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Bookmark, TrainFront, Clock, CloudSun, WifiOff } from "lucide-react";
 import { useBackground } from "./api/endpoints/background";
 import { AttendancePanel } from "./components/AttendancePanel";
@@ -24,6 +24,30 @@ export default function Dashboard() {
   const online = useIsOnline();
   const background = backgroundResponse?.image;
   usePrefetchDrawers();
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (!e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
+      const target = e.target as HTMLElement | null;
+      if (target && (target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName))) return;
+      switch (e.key.toLowerCase()) {
+        case "l":
+          e.preventDefault();
+          setActiveDrawer((d) => (d === "links" ? null : "links"));
+          break;
+        case "a":
+          e.preventDefault();
+          setActiveDrawer((d) => (d === "attendance" ? null : "attendance"));
+          break;
+        case "t":
+          e.preventDefault();
+          setActiveDrawer((d) => (d === "lrt" ? null : "lrt"));
+          break;
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
   return (
     <div className="relative h-screen w-full overflow-hidden font-sans text-white bg-slate-950">

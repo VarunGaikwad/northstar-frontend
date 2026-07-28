@@ -133,6 +133,15 @@ export interface BackgroundResponse {
   image: BackgroundImage;
 }
 
+export interface Quote {
+  text: string;
+  author: string | null;
+}
+
+export interface QuoteResponse {
+  quote: Quote;
+}
+
 export type LrtDayType = "WEEKDAY" | "HOLIDAY";
 export type LrtDirection = "INBOUND" | "OUTBOUND";
 export type LrtTrainType = "LOCAL" | "RAPID";
