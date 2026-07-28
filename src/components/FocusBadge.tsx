@@ -15,7 +15,7 @@ export function FocusBadge({ onClick }: FocusBadgeProps) {
   const attendance = today.data?.attendance ?? null;
 
   let label = "Attendance";
-  let dot: JSX.Element | null = null;
+  let dot: React.ReactNode = null;
   let active = false;
 
   if (!today.isLoading && !today.error) {
