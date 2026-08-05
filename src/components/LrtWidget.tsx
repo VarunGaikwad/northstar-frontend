@@ -1,15 +1,14 @@
 import { ArrowDown, ArrowRightLeft, TrainFront, Clock } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useLrtSearch, useLrtStations } from "../api/endpoints/lrt";
-import { parseHMM } from "../api/timeFormat";
+import { parseHMM, tokyoDate, tokyoMinutes } from "../api/timeFormat";
 import { useLocalStorage } from "../hooks/useLocalStorage";
 import { Badge, Skeleton } from "./ui";
 
 const MAX_UPCOMING = 6;
 
 function nowMinutes(): number {
-  const d = new Date();
-  return d.getHours() * 60 + d.getMinutes();
+  return tokyoMinutes();
 }
 
 interface PlannedTrain {
@@ -58,9 +57,11 @@ export function LrtWidget() {
   const direction =
     from && to ? (from.code < to.code ? "INBOUND" : "OUTBOUND") : "INBOUND";
 
+  const serviceDate = tokyoDate();
   const { data: searchData, isLoading: searchLoading, error } = useLrtSearch({
     from: fromCode,
     to: toCode,
+    date: serviceDate,
     enabled: !sameStation && stations.length > 0,
   });
 
@@ -97,7 +98,7 @@ export function LrtWidget() {
           <span>Light Rail Transit</span>
         </h2>
         <Badge variant="success" dot size="sm">
-          Live Timetable
+          Today’s Timetable
         </Badge>
       </div>
 
@@ -227,7 +228,7 @@ export function LrtWidget() {
       )}
 
       <div className="mt-4 pt-3 border-t border-white/10 shrink-0 text-[11px] text-white/40 text-center font-mono">
-        {plans.length} scheduled trips today · Auto-updates every 30s
+        {plans.length} scheduled trips today · Japan time
       </div>
     </aside>
   );

@@ -1,4 +1,6 @@
 import { createContext, useCallback, useEffect, useState, type ReactNode } from "react";
+import { clearUserPersistentCache } from "../api/persistentCache";
+import { queryClient } from "../api/queryClient";
 import type { User } from "../api/types";
 
 const TOKEN_KEY = "auth.token";
@@ -36,19 +38,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [expired, setExpired] = useState(false);
 
   const setSession = useCallback((newUser: User, newToken: string) => {
+    if (user && user.id !== newUser.id) {
+      clearUserPersistentCache(user.id);
+      queryClient.removeQueries({ queryKey: ["favlinks", user.id] });
+      queryClient.removeQueries({ queryKey: ["folders", user.id] });
+    }
     localStorage.setItem(USER_KEY, JSON.stringify(newUser));
     localStorage.setItem(TOKEN_KEY, newToken);
     setUser(newUser);
     setToken(newToken);
     setExpired(false);
-  }, []);
+  }, [user]);
 
   const logout = useCallback(() => {
+    if (user) {
+      clearUserPersistentCache(user.id);
+      queryClient.removeQueries({ queryKey: ["favlinks", user.id] });
+      queryClient.removeQueries({ queryKey: ["folders", user.id] });
+    }
     localStorage.removeItem(USER_KEY);
     localStorage.removeItem(TOKEN_KEY);
     setUser(null);
     setToken(null);
-  }, []);
+  }, [user]);
 
   const clearExpired = useCallback(() => setExpired(false), []);
 
